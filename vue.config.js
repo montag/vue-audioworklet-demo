@@ -1,6 +1,7 @@
+const publicPath = '/'
 
 module.exports = {
-  publicPath: '/',
+  publicPath: publicPath,
   outputDir: 'dist',
   assetsDir: '',
   runtimeCompiler: false,
@@ -12,13 +13,17 @@ module.exports = {
   devServer: {
     https: true,
   },
-  chainWebpack: config => {
-    // Worker Loader
-    config.module
-      .rule('worklet-loader')
-      .test(/\.worklet\.js$/)
-      .use('worklet-loader')
-      .loader('worklet-loader')
-      .end()
+  configureWebpack: {
+    module: {
+      rules: [
+        {
+          test: /Worklet.js/,
+          loader: 'worklet-loader',
+          options: {
+            publicPath: publicPath
+          }
+        }
+      ]
+    }
   }
 }

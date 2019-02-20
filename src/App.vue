@@ -1,8 +1,8 @@
 <template>
   <div id="app">
-    <div class="container">
-      <section class="section">
-        <div class="container">
+    <div>
+      <section>
+        <div>
           <h1 class="title">Vue AudioWorklet Demo</h1>
           <div class="field is-grouped is-grouped-multiline is-grouped-centered">
             <div class="control tags has-addons">
@@ -38,7 +38,7 @@
                   </div>
                   <div>
                     <input
-                      class="gain is-fullwidth"
+                      class="gain"
                       type="range"
                       v-model="leftGain"
                       @change="updateLeftGain"
@@ -59,7 +59,7 @@
                   </div>
                   <div>
                     <input
-                      class="gain is-fullwidth"
+                      class="gain"
                       type="range"
                       v-model="rightGain"
                       @change="updateRightGain"
@@ -79,7 +79,12 @@
                 <a class="button is-primary " @click.prevent="stopAudio">Stop</a>
               </template>
               <template v-else>
-                <a class="button is-primary" @click.prevent="startAudio">Start</a>
+                <a
+                  class="button is-primary"
+                  @click.prevent="startAudio"
+                  v-bind:disabled="!audioWorkletEnabled || !webAudioEnabled"
+                  >Start</a
+                >
               </template>
             </div>
             <div class="links">
@@ -87,7 +92,7 @@
                 <a href="https://github.com/montag/vue-audioworklet-demo">Source</a> -
                 <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API">Web Audio</a> -
                 <a href="https://developers.google.com/web/updates/2017/12/audio-worklet">Audio Worklet Intro</a> -
-                <a href="https://webaudio.github.io/web-audio-api/#AudioWorklet">AudioWorklet Spec</a>
+                <a href="https://webaudio.github.io/web-audio-api/#AudioWorklet">Audio Worklet Spec</a>
               </p>
             </div>
           </section>
@@ -99,7 +104,7 @@
 
 <script>
 import audioFileUrl from './assets/audio/he6_getready_break.ogg'
-import GainWorkletUrl from 'worklet-loader!./worklet/GainWorklet'
+import GainWorklet from './worklet/GainWorklet'
 
 export default {
   name: 'app',
@@ -110,8 +115,8 @@ export default {
     return {
       audioContext: null,
       analysers: null,
-      audioWorkletEnabled: false,
       gainWorkletNode: null,
+      visualizationEnabled: true,
       rightGain: 0.5,
       rightChannelLevel: 0,
       leftGain: 0.5,
@@ -135,15 +140,18 @@ export default {
   methods: {
     async startAudio() {
       // reset gain to protect eardrums
-      this.rightGain = .5
-      this.leftGain = .5
+      this.rightGain = 0.5
+      this.leftGain = 0.5
       this.source = await this.setupAudioGraph()
-      this.source.loop = this.loop
-      this.source.start(0)
+      if (this.source) {
+        this.source.loop = this.loop
+        this.source.start(0)
+      }
     },
 
     stopAudio() {
-      this.source.stop(0)
+      this.source.stop(this.audioContext.currentTime + 10)
+      this.source.disconnect()
       this.rightChannelLevel = 0
       this.leftChannelLevel = 0
       if (this.animationLoopId) {
@@ -153,10 +161,11 @@ export default {
         try {
           this.audioContext.close()
         } catch (error) {
-          console.log('error closing context', error)
+          // console.log('error closing context', error)
         }
         this.audioContext = null
       }
+      this.analysers = null
     },
 
     async updateLeftGain() {
@@ -181,39 +190,44 @@ export default {
       try {
         decodedAudioData = await context.decodeAudioData(audioData)
       } catch (error) {
-        console.log('unable to decode audio data', error)
+        // console.log('unable to decode audio data', error)
+        return
       }
       // Load and create the worklet
       try {
-        await context.audioWorklet.addModule(GainWorkletUrl)
+        await context.audioWorklet.addModule(GainWorklet)
         gainWorkletNode = new AudioWorkletNode(context, 'gain-worklet')
-        this.gainWorkletNode = gainWorkletNode
       } catch (error) {
-        console.log('unable to create worklet', error)
+        // console.log('unable to create worklet', error)
+        return
       }
-      // Build the audio graph
+      this.gainWorkletNode = gainWorkletNode
+      // Now we can build the audio graph...
+      // Fill the buffer with audio data
       source.buffer = decodedAudioData
       // Connect the source buffer node to the worklet
       source.connect(gainWorkletNode)
       // Create a splitter for the visualization
       const splitter = context.createChannelSplitter(source.channelCount)
-      // Connect the worklet output to the splitter (this is a subgraph)
+      // Connect the worklet to the splitter
       gainWorkletNode.connect(splitter)
-      // Connect the worklet to the output
+      // Connect the worklet to the destination output (this is what you hear)
       gainWorkletNode.connect(context.destination)
       // Add visualization that shows the gain for each channel
-      this.analysers = new Map()
-      for (let i = 0; i < source.channelCount; i++) {
-        let analyser = context.createAnalyser()
-        analyser.fftSize = 128
-        analyser.minDecibels = -70
-        analyser.maxDecibels = -25
-        analyser.smoothingTimeConstant = 0.8
-        this.analysers.set(i, analyser)
-        splitter.connect(analyser, i, 0)
+      if (this.visualizationEnabled) {
+        this.analysers = new Map()
+        for (let i = 0; i < source.channelCount; i++) {
+          let analyser = context.createAnalyser()
+          analyser.fftSize = 128
+          analyser.minDecibels = -70
+          analyser.maxDecibels = -25
+          analyser.smoothingTimeConstant = 0.8
+          this.analysers.set(i, analyser)
+          splitter.connect(analyser, i, 0)
+        }
+        // Start the animations
+        this.updateLevels()
       }
-      // Start the animations
-      this.updateLevels()
       return source
     },
 
@@ -259,10 +273,6 @@ export default {
   text-align: center;
   color: #2c3e50;
   margin-top: 25px;
-}
-
-.worklet-demo {
-  /*border: solid 1px blue;*/
 }
 
 .gain-controls {

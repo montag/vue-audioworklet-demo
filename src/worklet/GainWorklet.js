@@ -6,14 +6,26 @@ class GainWorklet extends AudioWorkletProcessor {
 
   static get parameterDescriptors() {
     return [
-      { name: 'gainChannel_0', defaultValue: 0.5 },
-      { name: 'gainChannel_1', defaultValue: 0.5 }
+      { name: 'gainChannel_0',
+        defaultValue: 0.5,
+        minValue: 0,
+        maxValue: 1,
+        automationRate: "k-rate"
+      },
+      { name: 'gainChannel_1',
+        defaultValue: 0.5,
+        minValue: 0,
+        maxValue: 1,
+        automationRate: "k-rate"
+      }
     ]
   }
 
   /**
-   * Normally for gain you would normally just use a splitter and a GainNode for each channel,
-   * but for this example, we'll use an AudioWorklet to set the gain for each channel.
+   * Normally for gain you would  just use a GainNode and possibly SplitterNode(s), but for
+   * this example, we'll use an AudioWorklet to independently set the gain for each channel.
+   *
+   * see: https://developers.google.com/web/updates/2017/12/audio-worklet
    *
    * @param inputs
    * @param outputs
@@ -21,21 +33,15 @@ class GainWorklet extends AudioWorkletProcessor {
    * @returns {boolean}
    */
   process(inputs, outputs, parameters) {
-    // inputs is a sequence of sequences of 128 frame float32's. We just want the first input sequence.
     const input = inputs[0]
     const output = outputs[0]
 
-    for (let channel = 0; channel < output.length; ++channel) {
+    for (let channel = 0; channel < input.length; ++channel) {
       const inputChannel = input[channel]
       const outputChannel = output[channel]
       // parameters contains our audioParams for each channel
       let gain = parameters[`gainChannel_${channel}`]
-      // handle a-rate and k-rate values and multiply by the gain values
-      if (gain.length === 1) {
-        for (let i = 0; i < inputChannel.length; ++i) outputChannel[i] = inputChannel[i] * gain[0]
-      } else {
-        for (let i = 0; i < inputChannel.length; ++i) outputChannel[i] = inputChannel[i] * gain[i]
-      }
+      for (let i = 0; i < inputChannel.length; ++i) outputChannel[i] = inputChannel[i] * gain[0]
     }
     return true
   }
