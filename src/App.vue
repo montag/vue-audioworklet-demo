@@ -150,7 +150,7 @@ export default {
     },
 
     stopAudio() {
-      this.source.stop(this.audioContext.currentTime + 10)
+      this.source.stop(0)
       this.source.disconnect()
       this.rightChannelLevel = 0
       this.leftChannelLevel = 0
