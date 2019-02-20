@@ -2,6 +2,8 @@
 
 This is simple demo of an AudioWorklet used within a vuecli3 project loaded via webpack4 and worklet-loader.
 
+NOTE: This demo will only work in browsers that support AudioWorklet, notably, Chrome and Opera.  
+
 ![example](docs/worklet-demo.gif)
 
 ### Walkthrough ###
@@ -9,55 +11,54 @@ This is simple demo of an AudioWorklet used within a vuecli3 project loaded via 
 
 vue.config.js
 ~~~~
+...
 configureWebpack: {
-    module: {
-      rules: [
-        {
-          test: /Worklet.js/,  <---- change this to match your filename conventions
-          loader: 'worklet-loader',
-          options: {
-            publicPath: publicPath   <---- will need to match vue public path
-          }
+  module: {
+    rules: [
+      {
+        test: /Worklet.js/,  <---- change this to match your filename conventions
+        loader: 'worklet-loader',
+        options: {
+          publicPath: publicPath   <---- will need to match vue public path
         }
-      ]
-    }
+      }
+    ]
   }
+}
+...
 ~~~~
 
-SomeVue.vue
+App.vue
 ~~~~
+
 import GainWorklet from './worklet/GainWorklet'
+...
 
 try {
-    await context.audioWorklet.addModule(GainWorklet)
-    gainWorkletNode = new AudioWorkletNode(context, 'gain-worklet')
+  await context.audioWorklet.addModule(GainWorklet)
+  gainWorkletNode = new AudioWorkletNode(context, 'gain-worklet')
 } catch (error) {
     // ...
 } 
 ~~~~
 
-The GainAudioWorklet is a simple worklet that adjusts the gain of two input channels via two AudioParams. 
+The GainWorklet is a simple worklet that adjusts the gain of two input channels via two k-rate AudioParams. 
 
-./worklet/GainWorklet.js
+GainWorklet.js
 ~~~~
 ...
 process(inputs, outputs, parameters) {
-    const input = inputs[0]
-    const output = outputs[0]
+  const input = inputs[0]
+  const output = outputs[0]
     
-    for (let channel = 0; channel < output.length; ++channel) {
-      const inputChannel = input[channel]
-      const outputChannel = output[channel]
-      // parameters contains our audioParams for each channel
-      let gain = parameters[`gainChannel_${channel}`]
-      // handle a-rate and k-rate values and multiply by the gain values
-      if (gain.length === 1) {
-        for (let i = 0; i < inputChannel.length; ++i) outputChannel[i] = inputChannel[i] * gain[0]
-      } else {
-        for (let i = 0; i < inputChannel.length; ++i) outputChannel[i] = inputChannel[i] * gain[i]
-      }
-    }
-    return true
+  for (let channel = 0; channel < input.length; ++channel) {
+    const inputChannel = input[channel]
+    const outputChannel = output[channel]
+    // parameters contains our audioParams for each channel
+    let gain = parameters[`gainChannel_${channel}`]
+    for (let i = 0; i < inputChannel.length; ++i) outputChannel[i] = inputChannel[i] * gain[0]
+  }
+  return true
 }
 ...
 ~~~~
@@ -86,7 +87,8 @@ source.connect(gainWorkletNode)
 gainWorkletNode.connect(context.destination)
 ~~~~
  
-The output is also routed from the Worklet to the context destination. That is the audio you hear.
+The output of the GainWorklet is also routed to a ChannelSplitterNode to visualize each channel's gain. 
+Each channel is connected to an analyser node.
 
 ~~~~
 / Create a splitter for the visualization
@@ -111,30 +113,32 @@ for (let i = 0; i < source.channelCount; i++) {
 this.updateLevels()
 ~~~~
 
-And the animation loop to pull levels from the analzsers and send it to the meters. 
+The animation loop pull the levels from the analysers and sends it to the meters. 
+Normally, this would be drawn directly into a canvas and not use vue's bindings. This is just an example.
+
 ~~~~
 updateLevels() {
-      for (let [key, analyser] of this.analysers) {
-        let buffer = new Uint8Array(analyser.frequencyBinCount) // this.buffers[key]
-        analyser.getByteFrequencyData(buffer)
-        let maxVal = 0
-        for (let i = 0; i < analyser.frequencyBinCount; i++) {
-          maxVal = Math.max(maxVal, buffer[i])
-        }
-        if (key === 0) {
-          this.rightChannelLevel = maxVal
-        } else {
-          this.leftChannelLevel = maxVal
-        }
-      }
-      this.animationLoopId = requestAnimationFrame(this.updateLevels)
-    },
+  for (let [key, analyser] of this.analysers) {
+    let buffer = new Uint8Array(analyser.frequencyBinCount)
+    analyser.getByteFrequencyData(buffer)
+    let maxVal = 0
+    for (let i = 0; i < analyser.frequencyBinCount; i++) {
+      maxVal = Math.max(maxVal, buffer[i])
+    }
+    if (key === 0) {
+      this.rightChannelLevel = maxVal
+    } else {
+      this.leftChannelLevel = maxVal
+    }
+  }
+  this.animationLoopId = requestAnimationFrame(this.updateLevels)
+},
 ~~~~
 
 
-NOTE: This demo will only work in browsers that support AudioWorklet, notably, Chrome and Opera.  
 
-References:
+### References ###
+
 1. [worklet-loader](https://github.com/reklawnos/worklet-loader)
 2. [AudioWorklet Spec](https://webaudio.github.io/web-audio-api/#audioworklet)
 3. [AudioWorklet Intro](https://developers.google.com/web/updates/2017/12/audio-worklet)

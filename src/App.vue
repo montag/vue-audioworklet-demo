@@ -233,7 +233,7 @@ export default {
 
     updateLevels() {
       for (let [key, analyser] of this.analysers) {
-        let buffer = new Uint8Array(analyser.frequencyBinCount) // this.buffers[key]
+        let buffer = new Uint8Array(analyser.frequencyBinCount)
         analyser.getByteFrequencyData(buffer)
         let maxVal = 0
         for (let i = 0; i < analyser.frequencyBinCount; i++) {
