@@ -197,6 +197,9 @@ export default {
       try {
         await context.audioWorklet.addModule(GainWorklet)
         gainWorkletNode = new AudioWorkletNode(context, 'gain-worklet')
+        gainWorkletNode.port.onmessage = event => {
+          console.log('Worklet Message:', event.data.msg)
+        }
       } catch (error) {
         // console.log('unable to create worklet', error)
         return

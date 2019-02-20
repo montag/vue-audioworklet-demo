@@ -2,6 +2,7 @@
 class GainWorklet extends AudioWorkletProcessor {
   constructor() {
     super()
+    this.port.postMessage({ msg: 'Processor created on the audio thread.'})
   }
 
   static get parameterDescriptors() {
