@@ -1,8 +1,10 @@
 # Vue Audioworklet Demo
 
-This is simple demo of an AudioWorklet used within a vuecli3 project loaded via webpack4 and worklet-loader.
+This is simple demo of an AudioWorklet loaded via webpack4 and worklet-loader within a standard vuecli3 project.
 
 NOTE: This demo will only work in browsers that support AudioWorklet, notably, Chrome and Opera.  
+
+The demo will play either a embedded ogg file or use the local microphone. 
 
 ![example](docs/worklet-demo.gif)
 
@@ -42,7 +44,7 @@ try {
 } 
 ~~~~
 
-The GainWorklet is a simple worklet that adjusts the gain of two input channels via two k-rate AudioParams. 
+The GainWorklet processor is a simple worklet that adjusts the gain of two input channels via two k-rate AudioParams. 
 
 GainWorklet.js
 ~~~~
@@ -63,7 +65,7 @@ process(inputs, outputs, parameters) {
 ...
 ~~~~
 
-Adjusting the audio params is done in the main thread via Worklet.parameters
+Adjusting the audio params is done in the main thread via worklet parameters.
 
 ~~~~
 async updateLeftGain() {
@@ -77,7 +79,7 @@ async updateRightGain() {
 },
 ~~~~
 
-The Audio Graph you hear is simply Source -> GainWorklet -> Destination 
+The Audio Graph you hear is simply Source -> GainWorklet -> Destination.
 
 ~~~~
 source.buffer = decodedAudioData
@@ -87,7 +89,7 @@ source.connect(gainWorkletNode)
 gainWorkletNode.connect(context.destination)
 ~~~~
  
-The output of the GainWorklet is also routed to a ChannelSplitterNode to visualize each channel's gain. 
+The output of the GainWorklet is also routed to a ChannelSplitterNode to visualize each channel's max levels. 
 Each channel is connected to an analyser node.
 
 ~~~~
@@ -113,7 +115,7 @@ for (let i = 0; i < source.channelCount; i++) {
 this.updateLevels()
 ~~~~
 
-The animation loop pull the levels from the analysers and sends it to the meters. 
+The animation loop pulls the levels from the analysers and sends it to the meters. 
 Normally, this would be drawn directly into a canvas and not use vue's bindings. This is just an example.
 
 ~~~~
@@ -144,6 +146,7 @@ updateLevels() {
 3. [AudioWorklet Intro](https://developers.google.com/web/updates/2017/12/audio-worklet)
 4. [Web Audio Visualizations](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Visualizations_with_Web_Audio_API)
 5. [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+6. [Drum Break Sample](https://www.youtube.com/watch?v=lNWB3r5ow9Q)
 
 
 ## Project setup

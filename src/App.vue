@@ -7,85 +7,49 @@
           <div class="field is-grouped is-grouped-multiline is-grouped-centered">
             <div class="control tags has-addons">
               <span class="tag">Web Audio</span>
-              <template v-if="webAudioEnabled"
-                ><span class="tag is-primary">Enabled</span></template
-              >
-              <template v-else
-                ><span class="tag is-error">Disabled</span></template
-              >
+              <span class="tag" :class="[webAudioEnabled ? 'is-primary' : 'is-danger']">
+                {{ webAudioEnabled ? 'Enabled' : 'Disabled' }}
+              </span>
             </div>
             <div class="control tags has-addons">
               <span class="tag">AudioWorklet</span>
-              <template v-if="audioWorkletEnabled"
-                ><span class="tag is-primary">Enabled</span></template
-              >
-              <template v-else
-                ><span class="tag is-error">Disabled</span></template
-              >
+              <span class="tag" :class="[audioWorkletEnabled ? 'is-primary' : 'is-danger']">
+                {{ audioWorkletEnabled ? 'Enabled' : 'Disabled' }}
+              </span>
+            </div>
+            <div class="control tags has-addons">
+              <span class="tag">GetUserMedia</span>
+              <span class="tag" :class="[getUserMediaEnabled ? 'is-primary' : 'is-danger']">
+                {{ getUserMediaEnabled ? 'Enabled' : 'Disabled' }}
+              </span>
             </div>
           </div>
 
           <h2 class="subtitle">
-            Press start to run the demo worklet.
+            Press start to run the demo worklet with either a file or the local microphone.
           </h2>
 
           <section class="worklet-demo">
             <div class="gain-controls">
-              <div class="channel channel-left">
-                <div class="channel-controls">
-                  <div>
-                    <meter ref="audioMeterLeft" :value="rightChannelLevel" min="0" max="255"></meter>
-                  </div>
-                  <div>
-                    <input
-                      class="gain"
-                      type="range"
-                      v-model="leftGain"
-                      @change="updateLeftGain"
-                      @input="updateLeftGain"
-                      name="leftGain"
-                      min="0"
-                      max="1"
-                      step=".001"
-                    />
-                  </div>
-                </div>
-                <div class="channel-label">Left</div>
-              </div>
-              <div class="channel channel-right">
-                <div class="channel-controls">
-                  <div>
-                    <meter ref="audioMeterRight" :value="leftChannelLevel" min="0" max="255"></meter>
-                  </div>
-                  <div>
-                    <input
-                      class="gain"
-                      type="range"
-                      v-model="rightGain"
-                      @change="updateRightGain"
-                      @input="updateRightGain"
-                      name="rightGain"
-                      min="0"
-                      max="1"
-                      step=".001"
-                    />
-                  </div>
-                </div>
-                <div class="channel-label">Right</div>
-              </div>
+              <audio-channel v-model="leftGain" :level="leftChannelLevel" @update="updateLeftGain" label="Left" />
+              <audio-channel v-model="rightGain" :level="rightChannelLevel" @update="updateRightGain" label="Right" />
             </div>
             <div class="startStop">
-              <template v-if="audioRunning">
-                <a class="button is-primary " @click.prevent="stopAudio">Stop</a>
-              </template>
-              <template v-else>
-                <a
-                  class="button is-primary"
-                  @click.prevent="startAudio"
-                  v-bind:disabled="!audioWorkletEnabled || !webAudioEnabled"
-                  >Start</a
-                >
-              </template>
+              <a
+                class="button is-primary"
+                :disabled="!audioWorkletEnabled || !webAudioEnabled || micRunning"
+                @click.prevent="fileRunning ? stopAudio() : startAudio(createFileSource)"
+              >
+                {{ fileRunning ? 'Stop Audio' : 'Start Audio' }}
+              </a>
+              <div>or</div>
+              <a
+                class="button is-primary"
+                :disabled="!audioWorkletEnabled || !webAudioEnabled || !getUserMediaEnabled || fileRunning"
+                @click.prevent="micRunning ? stopAudio() : startAudio(createMicSource)"
+              >
+                {{ micRunning ? 'Stop Mic' : 'Start Mic' }}
+              </a>
             </div>
             <div class="links">
               <p>
@@ -105,11 +69,14 @@
 <script>
 import audioFileUrl from './assets/audio/he6_getready_break.ogg'
 import GainWorklet from './worklet/GainWorklet'
+import AudioChannel from './components/AudioChannel'
 
 export default {
   name: 'app',
 
-  components: {},
+  components: {
+    AudioChannel
+  },
 
   data() {
     return {
@@ -129,34 +96,47 @@ export default {
   computed: {
     audioRunning() {
       return this.audioContext ? this.audioContext.state === 'running' : false
+    },
+    fileRunning() {
+      return this.audioRunning && this.source && this.source[Symbol.toStringTag] === 'AudioBufferSourceNode'
+    },
+    micRunning() {
+      return this.audioRunning && this.source && this.source[Symbol.toStringTag] === 'MediaStreamAudioSourceNode'
     }
   },
 
   created() {
     this.audioWorkletEnabled = this.detectAudioWorklet()
     this.webAudioEnabled = this.detectWebAudio()
+    this.getUserMediaEnabled = this.detectGum()
   },
 
   methods: {
-    async startAudio() {
-      // reset gain to protect eardrums
-      this.rightGain = 0.5
-      this.leftGain = 0.5
-      this.source = await this.setupAudioGraph()
-      if (this.source) {
-        this.source.loop = this.loop
-        this.source.start(0)
+    async startAudio(sourceFunction) {
+      this.resetLevels()
+      const context = new AudioContext()
+      let source = null
+      try {
+        source = await sourceFunction(context)
+      } catch (error) {
+        console.log('error creating audio source')
+        return
       }
+      try {
+        await this.setupAudioGraph(context, source)
+      } catch (error) {
+        console.log('error creating audio graph')
+        return
+      }
+      if (source[Symbol.toStringTag] === 'AudioBufferSourceNode') {
+        source.loop = this.loop
+        source.start(0)
+      }
+      this.audioContext = context
+      this.source = source
     },
 
     stopAudio() {
-      this.source.stop(0)
-      this.source.disconnect()
-      this.rightChannelLevel = 0
-      this.leftChannelLevel = 0
-      if (this.animationLoopId) {
-        cancelAnimationFrame(this.animationLoopId)
-      }
       if (this.audioContext) {
         try {
           this.audioContext.close()
@@ -165,7 +145,19 @@ export default {
         }
         this.audioContext = null
       }
+      if (this.animationLoopId) {
+        cancelAnimationFrame(this.animationLoopId)
+      }
+      this.rightChannelLevel = 0
+      this.leftChannelLevel = 0
       this.analysers = null
+      this.source = null
+    },
+
+    resetLevels() {
+      // reset gain to protect eardrums
+      this.rightGain = 0.5
+      this.leftGain = 0.5
     },
 
     async updateLeftGain() {
@@ -178,37 +170,32 @@ export default {
       gain.setValueAtTime(this.rightGain, this.audioContext.currentTime)
     },
 
-    async setupAudioGraph() {
-      // Create a new audio context
-      let context = new AudioContext()
-      this.audioContext = context
-      // Create a buffer and load the audio file
-      const source = context.createBufferSource()
+    async createFileSource(context) {
+      // Load the audio file
       const audioData = await this.loadAudioClip(audioFileUrl)
       let decodedAudioData = null
+      decodedAudioData = await context.decodeAudioData(audioData)
+      const fileSource = context.createBufferSource()
+      fileSource.buffer = decodedAudioData
+      return fileSource
+    },
+
+    async createMicSource(context) {
+      const constraints = { audio: true }
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      return context.createMediaStreamSource(stream)
+    },
+
+    async setupAudioGraph(context, source) {
+      // create worklet processor and worklet node
       let gainWorkletNode = null
-      try {
-        decodedAudioData = await context.decodeAudioData(audioData)
-      } catch (error) {
-        // console.log('unable to decode audio data', error)
-        return
-      }
-      // Load and create the worklet
-      try {
-        await context.audioWorklet.addModule(GainWorklet)
-        gainWorkletNode = new AudioWorkletNode(context, 'gain-worklet')
-        gainWorkletNode.port.onmessage = event => {
-          console.log('Worklet Message:', event.data.msg)
-        }
-      } catch (error) {
-        // console.log('unable to create worklet', error)
-        return
+      await context.audioWorklet.addModule(GainWorklet)
+      gainWorkletNode = new AudioWorkletNode(context, 'gain-worklet')
+      gainWorkletNode.port.onmessage = event => {
+        console.log('Worklet Message:', event.data.msg)
       }
       this.gainWorkletNode = gainWorkletNode
-      // Now we can build the audio graph...
-      // Fill the buffer with audio data
-      source.buffer = decodedAudioData
-      // Connect the source buffer node to the worklet
+      // Connect the source node to the worklet
       source.connect(gainWorkletNode)
       // Create a splitter for the visualization
       const splitter = context.createChannelSplitter(source.channelCount)
@@ -231,7 +218,6 @@ export default {
         // Start the animations
         this.updateLevels()
       }
-      return source
     },
 
     updateLevels() {
@@ -243,9 +229,9 @@ export default {
           maxVal = Math.max(maxVal, buffer[i])
         }
         if (key === 0) {
-          this.rightChannelLevel = maxVal
-        } else {
           this.leftChannelLevel = maxVal
+        } else {
+          this.rightChannelLevel = maxVal
         }
       }
       this.animationLoopId = requestAnimationFrame(this.updateLevels)
@@ -263,6 +249,10 @@ export default {
 
     detectWebAudio() {
       return !!(window.webkitAudioContext || window.AudioContext)
+    },
+
+    detectGum() {
+      return 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices
     }
   }
 }
@@ -288,34 +278,16 @@ export default {
   justify-content: center;
 }
 
-.channel {
-  border: solid 1px grey;
-  padding: 5px;
-  margin-top: 10px;
-  line-height: 4rem;
-  text-align: center;
-  width: 10rem;
-}
-
 .startStop {
   padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .button {
-  width: 10rem;
-}
-
-input[type='range'] {
-  width: 100%;
-}
-
-meter {
-  width: 100%;
-}
-
-.footer {
-  background-color: white !important;
-  padding: 3rem 1.5rem 6rem;
+  width: 6rem;
+  margin: 0.5rem;
 }
 
 .links {
