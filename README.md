@@ -1,10 +1,11 @@
-# Vue Audioworklet Demo
+# Vue AudioWorklet Demo
 
 This is simple demo of an AudioWorklet loaded via webpack4 and worklet-loader within a standard vuecli3 project.
 
 NOTE: This demo will only work in browsers that support AudioWorklet, notably, Chrome and Opera.  
 
-The demo will play either a embedded ogg file or use the local microphone. 
+The demo will play either an embedded ogg file or use the local microphone. 
+
 
 ![example](docs/worklet-demo.gif)
 
