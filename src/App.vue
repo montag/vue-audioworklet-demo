@@ -123,9 +123,10 @@ export default {
         return
       }
       try {
+        console.log('setup graph')
         await this.setupAudioGraph(context, source)
       } catch (error) {
-        console.log('error creating audio graph')
+        console.log('error creating audio graph', error)
         return
       }
       if (source[Symbol.toStringTag] === 'AudioBufferSourceNode') {
@@ -141,7 +142,7 @@ export default {
         try {
           this.audioContext.close()
         } catch (error) {
-          // console.log('error closing context', error)
+          console.log('error closing context', error)
         }
         this.audioContext = null
       }

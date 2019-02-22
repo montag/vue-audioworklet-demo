@@ -1,30 +1,19 @@
-/* eslint-disable */
 class GainWorklet extends AudioWorkletProcessor {
   constructor() {
     super()
-    this.port.postMessage({ msg: 'Processor created on the audio thread.'})
+    this.port.postMessage({ msg: 'Processor created on the audio thread.' })
   }
 
   static get parameterDescriptors() {
     return [
-      { name: 'gainChannel_0',
-        defaultValue: 0.5,
-        minValue: 0,
-        maxValue: 1,
-        automationRate: "k-rate"
-      },
-      { name: 'gainChannel_1',
-        defaultValue: 0.5,
-        minValue: 0,
-        maxValue: 1,
-        automationRate: "k-rate"
-      }
+      { name: 'gainChannel_0', defaultValue: 0.5, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
+      { name: 'gainChannel_1', defaultValue: 0.5, minValue: 0, maxValue: 1, automationRate: 'k-rate' }
     ]
   }
 
   /**
-   * Normally for gain you would  just use a GainNode and possibly SplitterNode(s), but for
-   * this example, we'll use an AudioWorklet to independently set the gain for each channel.
+   * Normally for gain you would just use a GainNode and possibly SplitterNode(s), but for
+   * this example, we'll use this AudioWorklet processor to independently set the gain for each channel.
    *
    * see: https://developers.google.com/web/updates/2017/12/audio-worklet
    *
@@ -44,6 +33,8 @@ class GainWorklet extends AudioWorkletProcessor {
       let gain = parameters[`gainChannel_${channel}`]
       for (let i = 0; i < inputChannel.length; ++i) outputChannel[i] = inputChannel[i] * gain[0]
     }
+    // uncomment to see when worklet is processing
+    // this.port.postMessage({ msg: currentTime })
     return true
   }
 }

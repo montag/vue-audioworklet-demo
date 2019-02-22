@@ -90,8 +90,8 @@ source.connect(gainWorkletNode)
 gainWorkletNode.connect(context.destination)
 ~~~~
  
-The output of the GainWorklet is also routed to a ChannelSplitterNode to visualize each channel's max levels. 
-Each channel is connected to an analyser node.
+The output of the GainWorklet is also routed to a ChannelSplitterNode to visualize each channel. 
+Each channel splitter output is connected to an analyser node.
 
 ~~~~
 / Create a splitter for the visualization
