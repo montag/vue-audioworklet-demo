@@ -1,7 +1,7 @@
-const publicPath = '/'
+
 
 module.exports = {
-  publicPath: publicPath,
+  publicPath: process.env.PUBLIC_PATH,
   outputDir: 'dist',
   assetsDir: '',
   runtimeCompiler: false,
@@ -20,7 +20,7 @@ module.exports = {
           test: /Worklet.js/,
           loader: 'worklet-loader',
           options: {
-            publicPath: publicPath
+            publicPath: process.env.PUBLIC_PATH
           }
         }
       ]

@@ -1,0 +1,16 @@
+pages:
+  image: node:latest
+  stage: deploy
+  cache:
+      paths:
+      - node_modules/
+  script:
+    - yarn install
+    - yarn build
+    - mv public public-vue
+    - mv dist public
+  artifacts:
+    paths:
+      - public
+  only:
+    - master
