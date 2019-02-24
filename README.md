@@ -1,6 +1,6 @@
 # Vue AudioWorklet Demo
 
-This is simple demo of an AudioWorklet loaded via webpack4 and worklet-loader within a standard vuecli3 project. It will play either an preconfigured ogg file or use the local microphone. The gain of each channel (L and R) will be adjusted by the worklet.
+Simple demo of an AudioWorklet loaded via webpack4 and worklet-loader within a standard vuecli3 project. It will play either a preconfigured ogg file or use the local microphone. The gain of each channel (L and R) can be adjusted by the worklet.
 
 [Live Demo](https://montag.gitlab.io/vue-audioworklet-demo/)
 
