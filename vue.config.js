@@ -1,4 +1,4 @@
-
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   publicPath: process.env.PUBLIC_PATH,
@@ -17,10 +17,10 @@ module.exports = {
     module: {
       rules: [
         {
-          test: /Worklet.js/,
+          test: /Worklet\.js$/,
           loader: 'worklet-loader',
           options: {
-            publicPath: process.env.PUBLIC_PATH
+            name: 'js/[hash].worklet.js'
           }
         }
       ]
