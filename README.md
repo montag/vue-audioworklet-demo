@@ -1,13 +1,14 @@
 # Vue AudioWorklet Demo
 
-This is simple demo of an AudioWorklet loaded via webpack4 and worklet-loader within a standard vuecli3 project.
+This is simple demo of an AudioWorklet loaded via webpack4 and worklet-loader within a standard vuecli3 project. It will play either an preconfigured ogg file or use the local microphone. The gain of each channel (L and R) will be adjusted by the worklet.
 
-NOTE: This demo will only work in browsers that support AudioWorklet, notably, Chrome and Opera.  
+[Live Demo](https://montag.gitlab.io/vue-audioworklet-demo/)
 
-The demo will play either an embedded ogg file or use the local microphone. 
+NOTE: This will only work in browsers that support AudioWorklet, notably, Chrome and Opera. 
 
 
 ![example](docs/worklet-demo.gif)
+
 
 ### Walkthrough ###
 
@@ -22,7 +23,7 @@ configureWebpack: {
         test: /Worklet.js/,  <---- change this to match your filename conventions
         loader: 'worklet-loader',
         options: {
-          publicPath: publicPath   <---- will need to match vue public path
+          name: 'js/[hash].worklet.js'
         }
       }
     ]
@@ -31,7 +32,7 @@ configureWebpack: {
 ...
 ~~~~
 
-App.vue
+App.vue - Creating Worklet processor (GainWorklet) and a Worklet Node (AudioWorkletNode)
 ~~~~
 
 import GainWorklet from './worklet/GainWorklet'
@@ -45,7 +46,7 @@ try {
 } 
 ~~~~
 
-The GainWorklet processor is a simple worklet that adjusts the gain of two input channels via two k-rate AudioParams. 
+The GainWorklet processor simply adjusts the gain of two input channels via two k-rate AudioParams. 
 
 GainWorklet.js
 ~~~~
@@ -66,27 +67,25 @@ process(inputs, outputs, parameters) {
 ...
 ~~~~
 
-Adjusting the audio params is done in the main thread via worklet parameters.
+Adjusting the audio params is done in the main thread via the worklet parameters.
 
 ~~~~
-async updateLeftGain() {
   let gain = await this.gainWorkletNode.parameters.get('gainChannel_0')
   gain.setValueAtTime(this.leftGain, this.audioContext.currentTime)
-},
-
-async updateRightGain() {
+  
+  ...
+  
   let gain = await this.gainWorkletNode.parameters.get('gainChannel_1')
   gain.setValueAtTime(this.rightGain, this.audioContext.currentTime)
-},
 ~~~~
 
-The Audio Graph you hear is simply Source -> GainWorklet -> Destination.
+The Audio Graph you hear is simply SourceNode -> GainWorkletNode -> DestinationNode.
 
 ~~~~
 source.buffer = decodedAudioData
 // Connect the source buffer node to the worklet
 source.connect(gainWorkletNode)
-// Connect the worklet to the destination output (this is what you hear)
+// Connect the worklet to the destination output
 gainWorkletNode.connect(context.destination)
 ~~~~
  

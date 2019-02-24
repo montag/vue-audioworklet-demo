@@ -1,4 +1,3 @@
-const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   publicPath: process.env.PUBLIC_PATH,

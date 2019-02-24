@@ -119,11 +119,10 @@ export default {
       try {
         source = await sourceFunction(context)
       } catch (error) {
-        console.log('error creating audio source')
+        console.log('error creating audio source', error)
         return
       }
       try {
-        console.log('setup graph')
         await this.setupAudioGraph(context, source)
       } catch (error) {
         console.log('error creating audio graph', error)
@@ -162,11 +161,17 @@ export default {
     },
 
     async updateLeftGain() {
+      if (!this.gainWorkletNode) {
+        return
+      }
       let gain = await this.gainWorkletNode.parameters.get('gainChannel_0')
       gain.setValueAtTime(this.leftGain, this.audioContext.currentTime)
     },
 
     async updateRightGain() {
+      if (!this.gainWorkletNode) {
+        return
+      }
       let gain = await this.gainWorkletNode.parameters.get('gainChannel_1')
       gain.setValueAtTime(this.rightGain, this.audioContext.currentTime)
     },
